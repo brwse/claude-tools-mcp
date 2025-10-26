@@ -72,6 +72,7 @@ func runServer(cmd *cobra.Command, args []string) error {
 	// Register all available tools.
 	mcp.AddTool(mcpServer, &tools.BashTool, tools.Bash)
 	mcp.AddTool(mcpServer, &tools.BashOutputTool, tools.BashOutput)
+	mcp.AddTool(mcpServer, &tools.ListShellsTool, tools.ListShells)
 	mcp.AddTool(mcpServer, &tools.KillShellTool, tools.KillShell)
 	mcp.AddTool(mcpServer, &tools.ReadTool, tools.Read)
 	mcp.AddTool(mcpServer, &tools.WriteTool, tools.Write)

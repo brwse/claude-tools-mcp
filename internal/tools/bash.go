@@ -31,6 +31,7 @@ const (
 type BackgroundShell struct {
 	ID               string
 	Command          string
+	Description      string
 	Cmd              *exec.Cmd
 	Stdout           *SyncBuffer
 	Stderr           *SyncBuffer
@@ -72,7 +73,7 @@ func (s *State) executeBashCommand(ctx context.Context, command, description str
 	}
 
 	if runInBackground {
-		return s.executeBackground(cmd, command)
+		return s.executeBackground(cmd, command, description)
 	}
 	return s.executeForeground(ctx, cmd, command)
 }
@@ -111,7 +112,7 @@ func (s *State) executeForeground(ctx context.Context, cmd *exec.Cmd, command st
 	return result, nil
 }
 
-func (s *State) executeBackground(cmd *exec.Cmd, command string) (string, error) {
+func (s *State) executeBackground(cmd *exec.Cmd, command, description string) (string, error) {
 	// SyncBuffer is needed because both the subprocess and the BashOutput
 	// goroutine will read from stdout/stderr concurrently
 	stdout := &SyncBuffer{}
@@ -127,13 +128,14 @@ func (s *State) executeBackground(cmd *exec.Cmd, command string) (string, error)
 	shellID := fmt.Sprintf("shell_%d", s.NextShellID)
 	s.NextShellID++
 	shell := &BackgroundShell{
-		ID:        shellID,
-		Command:   command,
-		Cmd:       cmd,
-		Stdout:    stdout,
-		Stderr:    stderr,
-		StartTime: time.Now(),
-		Done:      make(chan struct{}),
+		ID:          shellID,
+		Command:     command,
+		Description: description,
+		Cmd:         cmd,
+		Stdout:      stdout,
+		Stderr:      stderr,
+		StartTime:   time.Now(),
+		Done:        make(chan struct{}),
 	}
 	s.BackgroundShells[shellID] = shell
 	s.Mu.Unlock()
