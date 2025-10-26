@@ -3,6 +3,7 @@ module github.com/brwse/brwse/third_party/claude-tools
 go 1.25.1
 
 require (
+	github.com/bmatcuk/doublestar/v4 v4.9.1
 	github.com/gabriel-vasile/mimetype v1.4.10
 	github.com/modelcontextprotocol/go-sdk v1.0.0
 	github.com/spf13/cobra v1.10.1

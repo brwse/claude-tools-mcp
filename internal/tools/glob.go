@@ -3,15 +3,24 @@ package tools
 import (
 	"context"
 	"fmt"
-	"os/exec"
-	"path/filepath"
+	"io/fs"
+	"os"
+	"sort"
 	"strings"
+	"time"
 
+	"github.com/bmatcuk/doublestar/v4"
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+// fileInfo holds file path and modification time for sorting
+type fileInfo struct {
+	path    string
+	modTime time.Time
+}
+
 func (s *State) executeGlob(ctx context.Context, pattern, path string) (string, error) {
-	// Reject patterns containing null bytes to prevent shell injection via null-byte splitting attacks.
+	// Reject patterns containing null bytes to prevent potential security issues
 	if strings.Contains(pattern, "\x00") {
 		return "", fmt.Errorf("Invalid glob pattern.")
 	}
@@ -25,41 +34,71 @@ func (s *State) executeGlob(ctx context.Context, pattern, path string) (string, 
 		searchDir = resolved
 	}
 
-	findPattern := filepath.Join(searchDir, pattern)
-
-	// Use find + xargs with -print0/-0 delimiters to safely handle filenames with spaces and special chars.
-	// ls -t sorts results by modification time (most recent first) per the documented behavior.
-	// xargs -r prevents running ls when find produces no output, avoiding spurious cwd listings.
-	// Redirect stderr to suppress errors for unmatched patterns, returning "No files found" instead.
-	cmd := exec.CommandContext(ctx, "sh", "-c",
-		"find "+shellescape(searchDir)+" -type f -path "+shellescape(findPattern)+" -print0 | xargs -0 -r ls -t 2>/dev/null")
-	output, err := cmd.Output()
-	if err != nil {
+	// Check if searchDir exists and is accessible
+	if _, err := os.Stat(searchDir); err != nil {
 		return "No files found", nil
 	}
 
-	if len(output) == 0 {
-		return "No files found", nil
-	}
+	var matches []fileInfo
 
-	result := strings.TrimSpace(string(output))
-	if result == "" {
-		return "No files found", nil
-	}
+	// Use doublestar for proper glob matching with ** support
+	fsys := os.DirFS(searchDir)
+	err := doublestar.GlobWalk(fsys, pattern, func(path string, d fs.DirEntry) error {
+		// Check context cancellation
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
 
-	result = limitLines(ctx, result)
-	if err := checkOutputSize(ctx, result, "glob"); err != nil {
+		// Only match files, not directories
+		if d.IsDir() {
+			return nil
+		}
+
+		info, err := d.Info()
+		if err != nil {
+			// Skip files we can't stat
+			return nil
+		}
+
+		matches = append(matches, fileInfo{
+			path:    path,
+			modTime: info.ModTime(),
+		})
+
+		return nil
+	})
+
+	if err != nil && err != context.Canceled {
 		return "", err
 	}
 
-	return result, nil
-}
+	if len(matches) == 0 {
+		return "No files found", nil
+	}
 
-func shellescape(s string) string {
-	// Escape string for safe shell execution using single-quote wrapping.
-	// Replaces ' with '\"'\"' to break out of single quotes, insert a literal quote via double quotes, and re-enter single quotes.
-	// This prevents shell metacharacter injection even if the string contains special chars like $, `, \, etc.
-	return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
+	// Sort by modification time (most recent first)
+	sort.Slice(matches, func(i, j int) bool {
+		return matches[i].modTime.After(matches[j].modTime)
+	})
+
+	// Build result string
+	var result strings.Builder
+	for i, match := range matches {
+		if i > 0 {
+			result.WriteByte('\n')
+		}
+		result.WriteString(match.path)
+	}
+
+	resultStr := result.String()
+	resultStr = limitLines(ctx, resultStr)
+	if err := checkOutputSize(ctx, resultStr, "glob"); err != nil {
+		return "", err
+	}
+
+	return resultStr, nil
 }
 
 var GlobTool = sdk.Tool{
