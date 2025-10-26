@@ -29,9 +29,10 @@ func (s *State) executeGlob(ctx context.Context, pattern, path string) (string, 
 
 	// Use find + xargs with -print0/-0 delimiters to safely handle filenames with spaces and special chars.
 	// ls -t sorts results by modification time (most recent first) per the documented behavior.
+	// xargs -r prevents running ls when find produces no output, avoiding spurious cwd listings.
 	// Redirect stderr to suppress errors for unmatched patterns, returning "No files found" instead.
 	cmd := exec.CommandContext(ctx, "sh", "-c",
-		"find "+shellescape(searchDir)+" -type f -path "+shellescape(findPattern)+" -print0 | xargs -0 ls -t 2>/dev/null")
+		"find "+shellescape(searchDir)+" -type f -path "+shellescape(findPattern)+" -print0 | xargs -0 -r ls -t 2>/dev/null")
 	output, err := cmd.Output()
 	if err != nil {
 		return "No files found", nil
