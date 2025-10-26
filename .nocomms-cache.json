@@ -1,0 +1,23 @@
+{
+  "processed_files": {
+    "cmd/claude-tools-mcp/main.go": "2025-10-26T18:59:18.895445826+01:00",
+    "internal/tools/bash.go": "2025-10-26T18:59:33.604462702+01:00",
+    "internal/tools/bash_output.go": "2025-10-26T18:59:29.403491191+01:00",
+    "internal/tools/bash_test.go": "2025-10-26T18:59:44.211948401+01:00",
+    "internal/tools/common.go": "2025-10-26T18:59:19.237231403+01:00",
+    "internal/tools/constraints.go": "2025-10-26T18:59:36.909291453+01:00",
+    "internal/tools/constraints_test.go": "2025-10-26T18:59:18.376691015+01:00",
+    "internal/tools/edit.go": "2025-10-26T18:59:30.869351623+01:00",
+    "internal/tools/edit_test.go": "2025-10-26T18:59:28.509851109+01:00",
+    "internal/tools/glob.go": "2025-10-26T18:59:18.227147825+01:00",
+    "internal/tools/glob_test.go": "2025-10-26T18:59:34.815395832+01:00",
+    "internal/tools/grep.go": "2025-10-26T18:59:35.202208116+01:00",
+    "internal/tools/grep_test.go": "2025-10-26T18:59:39.331354838+01:00",
+    "internal/tools/kill_shell.go": "2025-10-26T18:59:16.050098653+01:00",
+    "internal/tools/read.go": "2025-10-26T18:59:24.577411046+01:00",
+    "internal/tools/read_test.go": "2025-10-26T18:59:44.900517288+01:00",
+    "internal/tools/server.go": "2025-10-26T18:59:22.730227814+01:00",
+    "internal/tools/write.go": "2025-10-26T18:59:19.922273106+01:00",
+    "internal/tools/write_test.go": "2025-10-26T18:59:29.10793866+01:00"
+  }
+}

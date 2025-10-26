@@ -1,0 +1,32 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+CLAUDE.md
+README.md
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+*_test.go
+
+# Build artifacts
+claude-tools-mcp
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Cache files
+.nocomms-cache.json
