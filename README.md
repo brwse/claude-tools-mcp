@@ -30,6 +30,26 @@ docker build -t claude-tools-mcp .
 docker run -p 8080:8080 claude-tools-mcp
 ```
 
+#### Docker Build Optimization
+
+The Docker image uses a pre-built runtime base image (`Dockerfile.runtime`) that contains all development tools and dependencies. This runtime image is automatically built and published to GitHub Container Registry (GHCR) whenever `Dockerfile.runtime` or the workflow file changes.
+
+**Benefits:**
+- Significantly faster builds (only compiles Go binary, not installing all tools)
+- Consistent runtime environment across deployments
+- Reduced bandwidth usage when deploying to Smithery
+
+**Building the runtime image locally:**
+```bash
+# Build the runtime base image
+docker build -f Dockerfile.runtime -t claude-tools-runtime .
+
+# Build the main image using local runtime
+docker build -t claude-tools-mcp .
+```
+
+The published runtime image is available at: `ghcr.io/brwse/claude-tools-mcp-runtime:latest`
+
 ### From Smithery
 
 This server is available on [Smithery](https://smithery.ai/), the MCP server registry:

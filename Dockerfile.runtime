@@ -1,0 +1,274 @@
+# Runtime stage with comprehensive tooling
+# This image is published to ghcr.io and used as a base for the main Dockerfile
+FROM alpine:3.22.1
+
+# Install base system packages and compilers
+RUN apk add --no-cache \
+    # Base system
+    bash \
+    dash \
+    ca-certificates \
+    tzdata \
+    openssl \
+    sudo \
+    shadow \
+    # Compilers and build tools
+    gcc \
+    g++ \
+    gfortran \
+    clang \
+    clang-extra-tools \
+    llvm \
+    make \
+    cmake \
+    ninja \
+    autoconf \
+    automake \
+    libtool \
+    m4 \
+    bison \
+    flex \
+    binutils \
+    patchelf \
+    # Development libraries
+    musl-dev \
+    linux-headers \
+    libffi-dev \
+    openssl-dev \
+    sqlite-dev \
+    yaml-dev \
+    zlib-dev \
+    bzip2-dev \
+    xz-dev \
+    readline-dev \
+    ncurses-dev \
+    # VCS
+    git \
+    git-lfs \
+    mercurial \
+    # Compression tools
+    tar \
+    gzip \
+    bzip2 \
+    xz \
+    zip \
+    unzip \
+    p7zip \
+    lz4 \
+    zstd \
+    pigz \
+    # Network tools
+    curl \
+    wget \
+    openssh-client \
+    rsync \
+    netcat-openbsd \
+    bind-tools \
+    iproute2 \
+    iputils \
+    # Utilities
+    jq \
+    yq \
+    tree \
+    file \
+    findutils \
+    coreutils \
+    grep \
+    ripgrep \
+    sed \
+    gawk \
+    parallel \
+    shellcheck \
+    # Database clients
+    sqlite \
+    postgresql-client \
+    mysql-client \
+    # Other tools
+    vim \
+    nano \
+    less \
+    diffutils \
+    patch \
+    gnupg && \
+    rm -rf /var/cache/apk/* /tmp/* /usr/share/man/* /usr/share/doc/*
+
+# Install Node.js and package managers
+ENV NODE_VERSION=22.20.0
+RUN apk add --no-cache nodejs npm yarn && \
+    npm install -g \
+    npm@latest \
+    yarn@latest \
+    pnpm@latest \
+    newman@latest \
+    lerna@latest \
+    parcel@latest && \
+    npm cache clean --force && \
+    rm -rf /var/cache/apk/* /tmp/* /root/.npm
+
+# Install Python and tools
+RUN apk add --no-cache \
+    python3 \
+    python3-dev \
+    py3-pip \
+    py3-setuptools \
+    py3-wheel && \
+    python3 -m pip install --no-cache-dir --break-system-packages \
+    pip \
+    setuptools \
+    wheel \
+    pipx \
+    ansible \
+    yamllint \
+    sphinx && \
+    rm -rf /var/cache/apk/* /tmp/* /root/.cache
+
+# Install Rust and tools
+RUN apk add --no-cache \
+    rust \
+    cargo \
+    cargo-bash-completions && \
+    rm -rf /var/cache/apk/* /tmp/*
+
+# Install Go
+RUN apk add --no-cache go && \
+    mkdir -p /usr/local/go-versions && \
+    rm -rf /var/cache/apk/* /tmp/*
+
+# Install container tools (Docker client, buildx)
+ENV DOCKER_VERSION=28.5.1
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ]; then ARCH="aarch64"; elif [ "$ARCH" = "x86_64" ]; then ARCH="x86_64"; fi && \
+    curl -fsSL https://download.docker.com/linux/static/stable/${ARCH}/docker-${DOCKER_VERSION}.tgz | \
+    tar xzvf - --strip 1 -C /usr/local/bin docker/docker && \
+    mkdir -p /usr/local/lib/docker/cli-plugins && \
+    BUILDX_ARCH=$([ "$ARCH" = "aarch64" ] && echo "arm64" || echo "amd64") && \
+    (curl -fsSL https://github.com/docker/buildx/releases/download/v0.29.1/buildx-v0.29.1.linux-${BUILDX_ARCH} \
+    -o /usr/local/lib/docker/cli-plugins/docker-buildx && \
+    chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx || true) && \
+    COMPOSE_ARCH=$([ "$ARCH" = "aarch64" ] && echo "aarch64" || echo "x86_64") && \
+    (curl -fsSL https://github.com/docker/compose/releases/download/v2.40.0/docker-compose-linux-${COMPOSE_ARCH} \
+    -o /usr/local/lib/docker/cli-plugins/docker-compose && \
+    chmod +x /usr/local/lib/docker/cli-plugins/docker-compose || true) && \
+    rm -rf /tmp/*
+
+# Install Buildah and Podman
+RUN apk add --no-cache \
+    podman \
+    buildah \
+    skopeo && \
+    rm -rf /var/cache/apk/* /tmp/*
+
+# Install Kubernetes tools
+RUN ARCH=$(uname -m) && \
+    K8S_ARCH=$([ "$ARCH" = "aarch64" ] && echo "arm64" || echo "amd64") && \
+    curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/${K8S_ARCH}/kubectl" \
+    -o /usr/local/bin/kubectl && \
+    chmod +x /usr/local/bin/kubectl && \
+    # Helm
+    curl -fsSL https://get.helm.sh/helm-v3.19.0-linux-${K8S_ARCH}.tar.gz | \
+    tar xzvf - --strip 1 -C /usr/local/bin linux-${K8S_ARCH}/helm && \
+    # Kustomize
+    curl -fsSL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.7.1/kustomize_v5.7.1_linux_${K8S_ARCH}.tar.gz | \
+    tar xzvf - -C /usr/local/bin && \
+    # Kind
+    curl -fsSL https://kind.sigs.k8s.io/dl/v0.30.0/kind-linux-${K8S_ARCH} -o /usr/local/bin/kind && \
+    chmod +x /usr/local/bin/kind && \
+    # Minikube
+    curl -fsSL https://storage.googleapis.com/minikube/releases/latest/minikube-linux-${K8S_ARCH} \
+    -o /usr/local/bin/minikube && \
+    chmod +x /usr/local/bin/minikube && \
+    rm -rf /tmp/*
+
+# Install AWS CLI
+RUN apk add --no-cache aws-cli && \
+    # Install AWS SAM CLI
+    pip3 install --no-cache-dir --break-system-packages aws-sam-cli && \
+    rm -rf /var/cache/apk/* /tmp/* /root/.cache
+
+# Install Azure CLI
+RUN pip3 install --no-cache-dir --break-system-packages azure-cli && \
+    rm -rf /tmp/* /root/.cache /root/.azure
+
+# Install Google Cloud CLI and gcsfuse
+RUN curl -fsSL https://sdk.cloud.google.com | bash -s -- --disable-prompts --install-dir=/usr/local && \
+    ln -s /usr/local/google-cloud-sdk/bin/gcloud /usr/local/bin/gcloud && \
+    ln -s /usr/local/google-cloud-sdk/bin/gsutil /usr/local/bin/gsutil && \
+    ln -s /usr/local/google-cloud-sdk/bin/bq /usr/local/bin/bq && \
+    rm -rf /tmp/* /root/.cache
+
+# Install gcsfuse for GCS FUSE mounting and s3fs for S3 FUSE mounting (works with Kata Containers VM isolation)
+RUN apk add --no-cache fuse3 s3fs-fuse && \
+    go install github.com/googlecloudplatform/gcsfuse/v2@v2.5.1 && \
+    mv /root/go/bin/gcsfuse /usr/local/bin/gcsfuse && \
+    chmod +x /usr/local/bin/gcsfuse && \
+    rm -rf /root/go /tmp/* /var/cache/apk/*
+
+# Install GitHub CLI
+RUN apk add --no-cache github-cli && \
+    rm -rf /var/cache/apk/* /tmp/*
+
+# Install HashiCorp tools
+RUN ARCH=$(uname -m) && \
+    HC_ARCH=$([ "$ARCH" = "aarch64" ] && echo "arm64" || echo "amd64") && \
+    (curl -fsSL https://releases.hashicorp.com/terraform/1.10.5/terraform_1.10.5_linux_${HC_ARCH}.zip -o /tmp/terraform.zip && \
+    unzip /tmp/terraform.zip -d /usr/local/bin && \
+    rm /tmp/terraform.zip || true) && \
+    (curl -fsSL https://releases.hashicorp.com/packer/1.11.2/packer_1.11.2_linux_${HC_ARCH}.zip -o /tmp/packer.zip && \
+    unzip /tmp/packer.zip -d /usr/local/bin && \
+    rm /tmp/packer.zip || true) && \
+    (curl -fsSL https://releases.hashicorp.com/vault/1.18.4/vault_1.18.4_linux_${HC_ARCH}.zip -o /tmp/vault.zip && \
+    unzip /tmp/vault.zip -d /usr/local/bin && \
+    rm /tmp/vault.zip || true) && \
+    rm -rf /tmp/*
+
+# Install Pulumi
+RUN curl -fsSL https://get.pulumi.com | sh && \
+    mv ~/.pulumi/bin/pulumi /usr/local/bin/ && \
+    rm -rf ~/.pulumi /tmp/*
+
+# Install Bazel and Bazelisk
+RUN ARCH=$(uname -m) && \
+    BZL_ARCH=$([ "$ARCH" = "aarch64" ] && echo "arm64" || echo "amd64") && \
+    curl -fsSL https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-linux-${BZL_ARCH} \
+    -o /usr/local/bin/bazelisk && \
+    chmod +x /usr/local/bin/bazelisk && \
+    ln -s /usr/local/bin/bazelisk /usr/local/bin/bazel && \
+    rm -rf /tmp/*
+
+# Install Bicep
+RUN ARCH=$(uname -m) && \
+    BCP_ARCH=$([ "$ARCH" = "aarch64" ] && echo "arm64" || echo "x64") && \
+    (curl -fsSL https://github.com/Azure/bicep/releases/download/v0.32.7/bicep-linux-${BCP_ARCH} \
+    -o /usr/local/bin/bicep && \
+    chmod +x /usr/local/bin/bicep || true) && \
+    rm -rf /tmp/*
+
+# Install AzCopy
+RUN curl -fsSL https://aka.ms/downloadazcopy-v10-linux | tar xzvf - --strip 1 -C /usr/local/bin --wildcards '*/azcopy' && \
+    ln -s /usr/local/bin/azcopy /usr/local/bin/azcopy10 && \
+    rm -rf /tmp/*
+
+# Install additional tools
+RUN apk add --no-cache \
+    mediainfo \
+    upx \
+    aria2 \
+    sshpass \
+    lftp && \
+    rm -rf /var/cache/apk/* /tmp/*
+
+# Set up environment variables
+ENV PATH=/usr/local/bin:/usr/local/google-cloud-sdk/bin:$PATH
+ENV DOCKER_CONFIG=/usr/local/lib/docker
+
+# Set up non-root user
+RUN adduser -D -u 1000 claude && \
+    # Add claude user to sudoers
+    echo "claude ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/claude && \
+    chmod 0440 /etc/sudoers.d/claude && \
+    # Create workspace
+    mkdir -p /workspace && \
+    chown -R claude:claude /workspace
+
+WORKDIR /workspace
+USER claude
