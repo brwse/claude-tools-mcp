@@ -24,6 +24,15 @@ jobs:
         go-version: '1.21'
         cache: true
 
+    - name: Install ripgrep
+      run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+        elif [ "$RUNNER_OS" == "macOS" ]; then
+          brew install ripgrep
+        fi
+
     - name: Download dependencies
       run: go mod download
 
