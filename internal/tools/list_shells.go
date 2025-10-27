@@ -13,6 +13,7 @@ type shellInfo struct {
 	ID          string `json:"id"`
 	Description string `json:"description"`
 	Status      string `json:"status"`
+	startTime   int64  // Unix timestamp for sorting (not exported)
 }
 
 type listShellsResult struct {
@@ -48,13 +49,30 @@ func (s *State) executeListShells(ctx context.Context) (string, error) {
 			ID:          shell.ID,
 			Description: shell.Description,
 			Status:      status,
+			startTime:   shell.StartTime.Unix(),
 		}
 		shells = append(shells, info)
 	}
 
-	// Sort shells by ID to ensure deterministic output
+	// Sort shells by status (running > failed > completed), then by creation time
 	sort.Slice(shells, func(i, j int) bool {
-		return shells[i].ID < shells[j].ID
+		// Define status priority (lower number = higher priority)
+		statusPriority := map[string]int{
+			"running":   0,
+			"failed":    1,
+			"completed": 2,
+		}
+
+		priorityI := statusPriority[shells[i].Status]
+		priorityJ := statusPriority[shells[j].Status]
+
+		// First sort by status priority
+		if priorityI != priorityJ {
+			return priorityI < priorityJ
+		}
+
+		// Then sort by creation time (oldest first)
+		return shells[i].startTime < shells[j].startTime
 	})
 
 	result := listShellsResult{
