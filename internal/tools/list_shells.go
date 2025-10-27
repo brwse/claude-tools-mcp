@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -50,6 +51,11 @@ func (s *State) executeListShells(ctx context.Context) (string, error) {
 		}
 		shells = append(shells, info)
 	}
+
+	// Sort shells by ID to ensure deterministic output
+	sort.Slice(shells, func(i, j int) bool {
+		return shells[i].ID < shells[j].ID
+	})
 
 	result := listShellsResult{
 		Shells: shells,
