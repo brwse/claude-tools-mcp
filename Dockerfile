@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.25.2-alpine3.22 AS builder
+FROM golang:1.25.2-bookworm AS builder
 
 WORKDIR /build
 

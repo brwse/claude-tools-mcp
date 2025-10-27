@@ -1,9 +1,9 @@
 # Runtime stage with comprehensive tooling
 # This image is published to ghcr.io and used as a base for the main Dockerfile
-FROM alpine:3.22.1
+FROM debian:bookworm-slim
 
 # Install base system packages and compilers
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     # Base system
     bash \
     dash \
@@ -11,17 +11,16 @@ RUN apk add --no-cache \
     tzdata \
     openssl \
     sudo \
-    shadow \
     # Compilers and build tools
     gcc \
     g++ \
     gfortran \
     clang \
-    clang-extra-tools \
+    clang-tools \
     llvm \
     make \
     cmake \
-    ninja \
+    ninja-build \
     autoconf \
     automake \
     libtool \
@@ -31,17 +30,16 @@ RUN apk add --no-cache \
     binutils \
     patchelf \
     # Development libraries
-    musl-dev \
-    linux-headers \
+    linux-libc-dev \
     libffi-dev \
-    openssl-dev \
-    sqlite-dev \
-    yaml-dev \
-    zlib-dev \
-    bzip2-dev \
-    xz-dev \
-    readline-dev \
-    ncurses-dev \
+    libssl-dev \
+    libsqlite3-dev \
+    libyaml-dev \
+    zlib1g-dev \
+    libbz2-dev \
+    liblzma-dev \
+    libreadline-dev \
+    libncurses-dev \
     # VCS
     git \
     git-lfs \
@@ -50,10 +48,10 @@ RUN apk add --no-cache \
     tar \
     gzip \
     bzip2 \
-    xz \
+    xz-utils \
     zip \
     unzip \
-    p7zip \
+    p7zip-full \
     lz4 \
     zstd \
     pigz \
@@ -63,12 +61,11 @@ RUN apk add --no-cache \
     openssh-client \
     rsync \
     netcat-openbsd \
-    bind-tools \
+    dnsutils \
     iproute2 \
-    iputils \
+    iputils-ping \
     # Utilities
     jq \
-    yq \
     tree \
     file \
     findutils \
@@ -80,9 +77,9 @@ RUN apk add --no-cache \
     parallel \
     shellcheck \
     # Database clients
-    sqlite \
+    sqlite3 \
     postgresql-client \
-    mysql-client \
+    default-mysql-client \
     # Other tools
     vim \
     nano \
@@ -90,11 +87,22 @@ RUN apk add --no-cache \
     diffutils \
     patch \
     gnupg && \
-    rm -rf /var/cache/apk/* /tmp/* /usr/share/man/* /usr/share/doc/*
+    rm -rf /var/lib/apt/lists/* /tmp/* /usr/share/man/* /usr/share/doc/*
+
+# Install yq (not in Debian main repos)
+RUN ARCH=$(uname -m) && \
+    YQ_ARCH=$([ "$ARCH" = "aarch64" ] && echo "arm64" || echo "amd64") && \
+    curl -fsSL https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQ_ARCH} \
+    -o /usr/local/bin/yq && \
+    chmod +x /usr/local/bin/yq && \
+    rm -rf /tmp/*
 
 # Install Node.js and package managers
 ENV NODE_VERSION=22.20.0
-RUN apk add --no-cache nodejs npm yarn && \
+RUN ARCH=$(uname -m) && \
+    NODE_ARCH=$([ "$ARCH" = "aarch64" ] && echo "arm64" || echo "x64") && \
+    curl -fsSL https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz | \
+    tar -xJ -C /usr/local --strip-components=1 && \
     npm install -g \
     npm@latest \
     yarn@latest \
@@ -103,15 +111,16 @@ RUN apk add --no-cache nodejs npm yarn && \
     lerna@latest \
     parcel@latest && \
     npm cache clean --force && \
-    rm -rf /var/cache/apk/* /tmp/* /root/.npm
+    rm -rf /tmp/* /root/.npm
 
 # Install Python and tools
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-dev \
-    py3-pip \
-    py3-setuptools \
-    py3-wheel && \
+    python3-pip \
+    python3-setuptools \
+    python3-wheel \
+    python3-venv && \
     python3 -m pip install --no-cache-dir --break-system-packages \
     pip \
     setuptools \
@@ -120,19 +129,23 @@ RUN apk add --no-cache \
     ansible \
     yamllint \
     sphinx && \
-    rm -rf /var/cache/apk/* /tmp/* /root/.cache
+    rm -rf /var/lib/apt/lists/* /tmp/* /root/.cache
 
 # Install Rust and tools
-RUN apk add --no-cache \
-    rust \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     cargo \
-    cargo-bash-completions && \
-    rm -rf /var/cache/apk/* /tmp/*
+    rustc && \
+    rm -rf /var/lib/apt/lists/* /tmp/*
 
 # Install Go
-RUN apk add --no-cache go && \
+ENV GO_VERSION=1.23.5
+RUN ARCH=$(uname -m) && \
+    GO_ARCH=$([ "$ARCH" = "aarch64" ] && echo "arm64" || echo "amd64") && \
+    curl -fsSL https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz | \
+    tar -xz -C /usr/local && \
     mkdir -p /usr/local/go-versions && \
-    rm -rf /var/cache/apk/* /tmp/*
+    rm -rf /tmp/*
+ENV PATH=/usr/local/go/bin:$PATH
 
 # Install container tools (Docker client, buildx)
 ENV DOCKER_VERSION=28.5.1
@@ -152,11 +165,11 @@ RUN ARCH=$(uname -m) && \
     rm -rf /tmp/*
 
 # Install Buildah and Podman
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     podman \
     buildah \
     skopeo && \
-    rm -rf /var/cache/apk/* /tmp/*
+    rm -rf /var/lib/apt/lists/* /tmp/*
 
 # Install Kubernetes tools
 RUN ARCH=$(uname -m) && \
@@ -180,10 +193,10 @@ RUN ARCH=$(uname -m) && \
     rm -rf /tmp/*
 
 # Install AWS CLI
-RUN apk add --no-cache aws-cli && \
+RUN apt-get update && apt-get install -y --no-install-recommends awscli && \
     # Install AWS SAM CLI
     pip3 install --no-cache-dir --break-system-packages aws-sam-cli && \
-    rm -rf /var/cache/apk/* /tmp/* /root/.cache
+    rm -rf /var/lib/apt/lists/* /tmp/* /root/.cache
 
 # Install Azure CLI
 RUN pip3 install --no-cache-dir --break-system-packages azure-cli && \
@@ -197,15 +210,15 @@ RUN curl -fsSL https://sdk.cloud.google.com | bash -s -- --disable-prompts --ins
     rm -rf /tmp/* /root/.cache
 
 # Install gcsfuse for GCS FUSE mounting and s3fs for S3 FUSE mounting (works with Kata Containers VM isolation)
-RUN apk add --no-cache fuse3 s3fs-fuse && \
+RUN apt-get update && apt-get install -y --no-install-recommends fuse3 s3fs && \
     go install github.com/googlecloudplatform/gcsfuse/v2@v2.5.1 && \
     mv /root/go/bin/gcsfuse /usr/local/bin/gcsfuse && \
     chmod +x /usr/local/bin/gcsfuse && \
-    rm -rf /root/go /tmp/* /var/cache/apk/*
+    rm -rf /root/go /tmp/* /var/lib/apt/lists/*
 
 # Install GitHub CLI
-RUN apk add --no-cache github-cli && \
-    rm -rf /var/cache/apk/* /tmp/*
+RUN apt-get update && apt-get install -y --no-install-recommends gh && \
+    rm -rf /var/lib/apt/lists/* /tmp/*
 
 # Install HashiCorp tools
 RUN ARCH=$(uname -m) && \
@@ -249,20 +262,19 @@ RUN curl -fsSL https://aka.ms/downloadazcopy-v10-linux | tar xzvf - --strip 1 -C
     rm -rf /tmp/*
 
 # Install additional tools
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     mediainfo \
-    upx \
     aria2 \
     sshpass \
     lftp && \
-    rm -rf /var/cache/apk/* /tmp/*
+    rm -rf /var/lib/apt/lists/* /tmp/*
 
 # Set up environment variables
 ENV PATH=/usr/local/bin:/usr/local/google-cloud-sdk/bin:$PATH
 ENV DOCKER_CONFIG=/usr/local/lib/docker
 
 # Set up non-root user
-RUN adduser -D -u 1000 claude && \
+RUN useradd -m -u 1000 claude && \
     # Add claude user to sudoers
     echo "claude ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/claude && \
     chmod 0440 /etc/sudoers.d/claude && \
