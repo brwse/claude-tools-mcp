@@ -23,7 +23,7 @@ USER root
 # Copy the binary from builder
 COPY --from=builder /build/claude-tools-mcp /usr/local/bin/claude-tools-mcp
 
-# Expose HTTP port (Smithery will set PORT env var)
+# Expose HTTP port
 EXPOSE 8080
 
 # Switch back to non-root user
