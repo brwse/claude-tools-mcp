@@ -34,6 +34,47 @@ go run ./cmd/claude-tools-mcp
 go run ./cmd/claude-tools-mcp --addr localhost:9000
 ```
 
+## Releases
+
+The project uses [GoReleaser](https://goreleaser.com/) for automated releases.
+
+### Creating a Release
+
+1. **Tag a version**: Create and push a git tag with semantic versioning:
+   ```bash
+   git tag -a v0.1.0 -m "Release v0.1.0"
+   git push origin v0.1.0
+   ```
+
+2. **Automated build**: GitHub Actions will automatically:
+   - Run tests
+   - Build binaries for multiple platforms (Linux, macOS, Windows on amd64/arm64)
+   - Create archives with checksums
+   - Generate changelog from commits
+   - Create a GitHub release with all artifacts
+
+### Local Testing
+
+Test the release configuration locally without publishing:
+```bash
+# Install goreleaser (if not already installed)
+go install github.com/goreleaser/goreleaser/v2@latest
+
+# Test release build (no publishing)
+goreleaser release --snapshot --clean
+
+# Check what would be released
+goreleaser check
+```
+
+### Release Artifacts
+
+Each release includes:
+- Pre-built binaries for Linux, macOS, and Windows (amd64 and arm64)
+- Compressed archives (tar.gz for Unix, zip for Windows)
+- SHA256 checksums for verification
+- Automatically generated changelog
+
 ## Architecture
 
 ### Core Components
