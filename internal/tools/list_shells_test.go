@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,12 +20,26 @@ func TestListShells_NoShells(t *testing.T) {
 func TestListShells_WithShells(t *testing.T) {
 	state := NewState()
 
-	// Start some background shells
-	_, err := state.executeBashCommand(context.Background(), "sleep 1", "First task", 0, true)
+	// Start some background shells with sleep to ensure different timestamps
+	_, err := state.executeBashCommand(context.Background(), "sleep 10", "First task", 0, true)
 	require.NoError(t, err)
 
-	_, err = state.executeBashCommand(context.Background(), "echo hello", "Second task", 0, true)
+	// Delay to ensure different Unix timestamps (second precision) for deterministic ordering
+	time.Sleep(1 * time.Second)
+
+	_, err = state.executeBashCommand(context.Background(), "sleep 10", "Second task", 0, true)
 	require.NoError(t, err)
+
+	// Clean up background shells after test
+	defer func() {
+		state.Mu.Lock()
+		for _, shell := range state.BackgroundShells {
+			if shell.Cmd != nil && shell.Cmd.Process != nil {
+				_ = shell.Cmd.Process.Kill()
+			}
+		}
+		state.Mu.Unlock()
+	}()
 
 	// List shells
 	result, err := state.executeListShells(context.Background())
@@ -39,15 +54,15 @@ func TestListShells_WithShells(t *testing.T) {
 	assert.Equal(t, 2, parsed.Count)
 	assert.Len(t, parsed.Shells, 2)
 
-	// Check first shell
+	// Check first shell - should be running with long sleep command
 	assert.Equal(t, "shell_1", parsed.Shells[0].ID)
 	assert.Equal(t, "First task", parsed.Shells[0].Description)
-	assert.Contains(t, []string{"running", "completed"}, parsed.Shells[0].Status)
+	assert.Equal(t, "running", parsed.Shells[0].Status)
 
-	// Check second shell
+	// Check second shell - should be running with long sleep command
 	assert.Equal(t, "shell_2", parsed.Shells[1].ID)
 	assert.Equal(t, "Second task", parsed.Shells[1].Description)
-	assert.Contains(t, []string{"running", "completed"}, parsed.Shells[1].Status)
+	assert.Equal(t, "running", parsed.Shells[1].Status)
 }
 
 func TestListShells_StatusTransitions(t *testing.T) {
@@ -104,8 +119,19 @@ func TestListShells_EmptyDescription(t *testing.T) {
 	state := NewState()
 
 	// Start a shell without description
-	_, err := state.executeBashCommand(context.Background(), "sleep 1", "", 0, true)
+	_, err := state.executeBashCommand(context.Background(), "sleep 10", "", 0, true)
 	require.NoError(t, err)
+
+	// Clean up background shell after test
+	defer func() {
+		state.Mu.Lock()
+		for _, shell := range state.BackgroundShells {
+			if shell.Cmd != nil && shell.Cmd.Process != nil {
+				_ = shell.Cmd.Process.Kill()
+			}
+		}
+		state.Mu.Unlock()
+	}()
 
 	// List shells
 	result, err := state.executeListShells(context.Background())
@@ -117,4 +143,5 @@ func TestListShells_EmptyDescription(t *testing.T) {
 
 	assert.Equal(t, 1, parsed.Count)
 	assert.Equal(t, "", parsed.Shells[0].Description)
+	assert.Equal(t, "running", parsed.Shells[0].Status)
 }
