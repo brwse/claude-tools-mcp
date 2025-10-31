@@ -1,9 +1,0 @@
-{
-	"scripts": {
-		"e2b:build:dev": "npx tsx build.dev.ts",
-		"e2b:build:prod": "npx tsx build.prod.ts"
-	},
-	"dependencies": {
-		"e2b": "^2.4.2"
-	}
-}

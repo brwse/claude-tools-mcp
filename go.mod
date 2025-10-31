@@ -1,4 +1,4 @@
-module github.com/brwse/brwse/third_party/claude-tools
+module github.com/brwse/claude-tools-mcp
 
 go 1.25.1
 

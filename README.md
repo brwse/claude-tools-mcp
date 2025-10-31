@@ -49,23 +49,6 @@ docker build -t claude-tools-mcp .
 
 The published runtime image is available at: `ghcr.io/brwse/claude-tools-mcp-runtime:latest`
 
-### With E2B
-
-This server can be deployed on [E2B](https://e2b.dev) for cloud-based execution environments. E2B provides isolated, sandboxed environments perfect for running code tools.
-
-**Available templates:**
-- **Production**: `yz5zer76qpktpn7xqeoi` - Stable version for general use
-- **Development**: `bph962q8r5fwo62iewtr` - Latest development version with newest features
-
-To use with E2B:
-```bash
-# Using the production template
-e2b sandbox create yz5zer76qpktpn7xqeoi
-
-# Using the development template
-e2b sandbox create bph962q8r5fwo62iewtr
-```
-
 ## Usage
 
 ### Starting the Server
